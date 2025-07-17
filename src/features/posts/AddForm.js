@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { nanoid } from "@reduxjs/toolkit";
-import { addPost } from "./postSlice";
+import { addNewPost } from "./postSlice";
 import { selectAllUsers } from "../users/userSlice";
 
 import React from 'react'
@@ -10,6 +10,7 @@ const AddForm = () => {
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
     const [userId, setUserId] = useState('');
+    const [addRequestStatus, setAddRequestStatus] = useState('idle');
 
     const users = useSelector(selectAllUsers);
     const userOptions = users.map(user => (
@@ -23,15 +24,27 @@ const AddForm = () => {
     const onBodyChanged = (e) => setBody(e.target.value);
     const onUserChanged = (e) => setUserId(e.target.value);
 
+    const canSave = [title, body, userId].every(Boolean) && addRequestStatus === 'idle';
+
     const onSavePostClicked = () => {
-        if (title && body) {
-            dispatch(addPost(title, body, userId));
-            setTitle('');
-            setBody('');
+        if(canSave) {
+            try {
+                setAddRequestStatus('pending')
+                dispatch(addNewPost({title, body, userId})).unwrap()
+                setTitle('')
+                setBody('')
+                setUserId('')
+            }
+            catch(err) {
+                console.log('fail', err)
+            }
+            finally {
+                setAddRequestStatus('idle')
+            }
         }
     };
 
-    const canSave = Boolean(title) && Boolean(body) && Boolean(userId);
+    
     return (
         <form>
             <h2>Add New Post</h2>

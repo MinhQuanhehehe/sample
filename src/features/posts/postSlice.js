@@ -6,43 +6,7 @@ import react from "react";
 
 const POST_URL = 'https://jsonplaceholder.typicode.com/posts'
 const initialState = {
-    posts: [
-        // {id: 1, title: 'blog 1', body: 'Ronaldo siuu', date: sub(new Date(), { minutes: 10 }).toISOString(), reactions: { 
-        //     thumbsUp: 0,
-        //     hooray: 0,
-        //     heart: 0,
-        //     rocket: 0,
-        //     eyes: 0
-        // } },
-        // {id: 2, title: 'blog 2', body: 'Messi siuu', date: sub(new Date(), { minutes: 5 }).toISOString(), reactions: { 
-        //     thumbsUp: 0,
-        //     hooray: 0,
-        //     heart: 0,
-        //     rocket: 0,
-        //     eyes: 0
-        // } },
-        // {id: 3, title: 'blog 3', body: 'Neymar siuu', date: sub(new Date(), { minutes: 2 }).toISOString(), reactions: { 
-        //     thumbsUp: 0,
-        //     hooray: 0,
-        //     heart: 0,
-        //     rocket: 0,
-        //     eyes: 0
-        // } },
-        // {id: 4, title: 'blog 4', body: 'Mbappe siuu', date: sub(new Date(), { minutes: 1 }).toISOString(), reactions: { 
-        //     thumbsUp: 0,
-        //     hooray: 0,
-        //     heart: 0,
-        //     rocket: 0,
-        //     eyes: 0
-        // } },
-        // {id: 5, title: 'blog 5', body: 'Benzema siuu', date: sub(new Date(), { minutes: 0 }).toISOString(), reactions: { 
-        //     thumbsUp: 0,
-        //     hooray: 0,
-        //     heart: 0,
-        //     rocket: 0,
-        //     eyes: 0
-        // } },
-    ],
+    posts: [],
     status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
     error: null,
 };
@@ -51,6 +15,27 @@ export const fetchPosts = createAsyncThunk('posts/fetchPosts', async () => {
     console.log(response.data)
     return response.data
 })
+
+export const addNewPost = createAsyncThunk('posts/addNewPost', async (initialPost) => {
+    try {
+        const response = await axios.post(POST_URL, initialPost)
+        return response.data
+    } catch (err) {
+        return err.message
+    }
+})
+
+export const deletePost = createAsyncThunk('posts/deletePost', async (initialPost) => {
+    const { id } = initialPost;
+    try {
+        const response = await axios.delete(`${POST_URL}/${id}`)
+        if (response?.status === 200) return initialPost;
+        return `${response?.status}: ${response?.statusText}`;
+    } catch (err) {
+        return err.message;
+    }
+})
+
 const postSlice = createSlice({
     name: 'posts',
     initialState,
@@ -105,13 +90,35 @@ const postSlice = createSlice({
                     eyes: 0
                 }
             }));
-            state.posts = state.posts.concat(loadedPosts);
+            state.posts = loadedPosts;
         }).addCase(fetchPosts.rejected, (state, action) => {
             state.status = 'failed'
             state.error = action.error.message
+        }).addCase(addNewPost.fulfilled, (state, action) => {
+            action.payload.userId = Number(action.payload.userId);
+            action.payload.date = new Date().toISOString();
+            action.payload.reactions = {
+                thumbsUp: 0,
+                hooray: 0,
+                heart: 0,
+                rocket: 0,
+                eyes: 0
+            }
+            console.log(action.payload)
+            state.posts.push(action.payload)
+        }).addCase(deletePost.fulfilled, (state, action) => {
+            if (!action.payload?.id) {
+                console.log('Delete could not complete')
+                console.log(action.payload)
+                return;
+            }
+            const { id } = action.payload;
+            const posts = state.posts.filter(post => post.id !== id);
+            state.posts = posts;
         })
     }
 });
+
 export const { addPost, removePost, addReaction } = postSlice.actions;
 export const selectAllPosts = (state) => state.posts.posts;
 export const getStatus = (state) => state.posts.status;
