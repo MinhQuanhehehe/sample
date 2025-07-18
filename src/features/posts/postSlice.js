@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
 import { nanoid } from "@reduxjs/toolkit";
 import { sub } from "date-fns";
 import axios from "axios";
@@ -33,6 +33,17 @@ export const deletePost = createAsyncThunk('posts/deletePost', async (initialPos
         return `${response?.status}: ${response?.statusText}`;
     } catch (err) {
         return err.message;
+    }
+})
+
+export const updatePost = createAsyncThunk('posts/updatePost', async (initialPost) => {
+    const { id } = initialPost;
+    try {
+        const response = await axios.put(`${POST_URL}/${id}`, initialPost)
+        return response.data
+    } catch (err) {
+        //return err.message;
+        return initialPost; // only for testing Redux!
     }
 })
 
@@ -115,6 +126,16 @@ const postSlice = createSlice({
             const { id } = action.payload;
             const posts = state.posts.filter(post => post.id !== id);
             state.posts = posts;
+        }).addCase(updatePost.fulfilled, (state, action) => {
+            if (!action.payload?.id) {
+                console.log('Update could not complete')
+                console.log(action.payload)
+                return;
+            }
+            const { id } = action.payload;
+            action.payload.date = new Date().toISOString();
+            const posts = state.posts.filter(post => post.id !== id);
+            state.posts = [...posts, action.payload];
         })
     }
 });
@@ -123,5 +144,9 @@ export const { addPost, removePost, addReaction } = postSlice.actions;
 export const selectAllPosts = (state) => state.posts.posts;
 export const getStatus = (state) => state.posts.status;
 export const getError = (state) => state.posts.error;
-
+export const selectPostById = (state, postId) => state.posts.posts.find(post => post.id === postId);
+export const selectPostsByUser = createSelector(
+    [selectAllPosts, (state, userId) => userId],
+    (posts, userId) => posts.filter(post => post.userId === userId)
+)
 export default postSlice.reducer;
